@@ -47,33 +47,46 @@ function fileKV(): KV {
 
 const kv: KV = redisKV() ?? fileKV()
 
-export async function getProfile(): Promise<Profile> {
-  const saved = await kv.get<Partial<Profile>>("profile")
+// Every record is stored per user: u:<id>:profile, u:<id>:batch:<date>, u:<id>:batch-dates.
+const k = (uid: string, key: string) => `u:${uid}:${key}`
+
+export async function listUsers(): Promise<string[]> {
+  return (await kv.get<string[]>("users")) ?? []
+}
+
+export async function getProfile(uid: string): Promise<Profile> {
+  const saved = await kv.get<Partial<Profile>>(k(uid, "profile"))
   return { ...defaultProfile, ...(saved ?? {}) }
 }
 
-export async function saveProfile(profile: Profile) {
-  await kv.set("profile", profile)
+export async function hasProfile(uid: string): Promise<boolean> {
+  return (await kv.get(k(uid, "profile"))) !== null
 }
 
-export async function getBatch(date: string): Promise<Batch | null> {
-  return kv.get<Batch>(`batch:${date}`)
+export async function saveProfile(uid: string, profile: Profile) {
+  await kv.set(k(uid, "profile"), profile)
+  const users = await listUsers()
+  if (!users.includes(uid)) await kv.set("users", [...users, uid])
 }
 
-export async function saveBatch(batch: Batch) {
-  await kv.set(`batch:${batch.date}`, batch)
-  const dates = (await kv.get<string[]>("batch-dates")) ?? []
+export async function getBatch(uid: string, date: string): Promise<Batch | null> {
+  return kv.get<Batch>(k(uid, `batch:${date}`))
+}
+
+export async function saveBatch(uid: string, batch: Batch) {
+  await kv.set(k(uid, `batch:${batch.date}`), batch)
+  const dates = await listBatchDates(uid)
   if (!dates.includes(batch.date)) {
-    await kv.set("batch-dates", [batch.date, ...dates].sort().reverse())
+    await kv.set(k(uid, "batch-dates"), [batch.date, ...dates].sort().reverse())
   }
 }
 
-export async function listBatchDates(): Promise<string[]> {
-  return (await kv.get<string[]>("batch-dates")) ?? []
+export async function listBatchDates(uid: string): Promise<string[]> {
+  return (await kv.get<string[]>(k(uid, "batch-dates"))) ?? []
 }
 
-export async function recentBatches(limit: number): Promise<Batch[]> {
-  const dates = (await listBatchDates()).slice(0, limit)
-  const batches = await Promise.all(dates.map(getBatch))
+export async function recentBatches(uid: string, limit: number): Promise<Batch[]> {
+  const dates = (await listBatchDates(uid)).slice(0, limit)
+  const batches = await Promise.all(dates.map((d) => getBatch(uid, d)))
   return batches.filter((b): b is Batch => b !== null)
 }

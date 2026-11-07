@@ -48,7 +48,7 @@ export function ProfileForm({ profile, tokens, hasSources }: Props) {
       <Card>
         <CardHeader>
           <CardTitle>Your profile</CardTitle>
-          <CardDescription>Used when an API key is set. The built-in idea bank is written for UX/UI designers.</CardDescription>
+          <CardDescription>Every draft is written from this.</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-6">
           <div className="grid gap-6 sm:grid-cols-2">
@@ -78,13 +78,48 @@ export function ProfileForm({ profile, tokens, hasSources }: Props) {
             <Textarea id="newsFocus" name="newsFocus" defaultValue={profile.newsFocus} />
           </Field>
           <div className="grid gap-6 sm:grid-cols-2">
-            <Field id="ideasPerDay" label="Ideas per day" hint="1 to 6.">
-              <Input id="ideasPerDay" name="ideasPerDay" type="number" min={1} max={6} defaultValue={profile.ideasPerDay} />
+            <Field id="ideasPerDay" label="Ideas per day" hint="1 to 5.">
+              <Input id="ideasPerDay" name="ideasPerDay" type="number" min={1} max={5} defaultValue={profile.ideasPerDay} />
             </Field>
             <Field id="timezone" label="Time zone" hint="Decides when a new day starts, e.g. Africa/Lagos.">
               <Input id="timezone" name="timezone" defaultValue={profile.timezone} />
             </Field>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Your accounts</CardTitle>
+          <CardDescription>
+            Used on the Replies page to find posts to reply to. The app never posts or logs in for you.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-6">
+          <div className="grid gap-6 sm:grid-cols-2">
+            <Field id="linkedinUrl" label="Your LinkedIn profile">
+              <Input
+                id="linkedinUrl"
+                name="linkedinUrl"
+                defaultValue={profile.linkedinUrl}
+                placeholder="linkedin.com/in/your-name"
+              />
+            </Field>
+            <Field id="xHandle" label="Your X handle">
+              <Input id="xHandle" name="xHandle" defaultValue={profile.xHandle} placeholder="@yourhandle" />
+            </Field>
+          </div>
+          <Field id="xFollow" label="People to engage with on X" hint="One handle per line.">
+            <Textarea id="xFollow" name="xFollow" defaultValue={profile.xFollow} placeholder={"@figma\n@someone"} />
+          </Field>
+          <Field id="linkedinFollow" label="People to engage with on LinkedIn" hint="One profile link per line.">
+            <Textarea
+              id="linkedinFollow"
+              name="linkedinFollow"
+              defaultValue={profile.linkedinFollow}
+              placeholder="https://www.linkedin.com/in/their-name"
+            />
+          </Field>
         </CardContent>
       </Card>
 

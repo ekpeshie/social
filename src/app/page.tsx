@@ -4,15 +4,17 @@ import { GenerateButton } from "@/components/generate-button"
 import { IdeaCard } from "@/components/idea-card"
 import { formatDay, todayIn } from "@/lib/dates"
 import { hasApiKey } from "@/lib/generate"
+import { requireUserId } from "@/lib/session"
 import { getBatch, getProfile } from "@/lib/store"
 
 export const dynamic = "force-dynamic"
 export const maxDuration = 300
 
 export default async function TodayPage() {
-  const profile = await getProfile()
+  const uid = await requireUserId()
+  const profile = await getProfile(uid)
   const date = todayIn(profile.timezone)
-  const batch = await getBatch(date)
+  const batch = await getBatch(uid, date)
   const live = hasApiKey()
 
   return (
@@ -30,7 +32,7 @@ export default async function TodayPage() {
           <Info />
           <AlertTitle>Using the built-in idea bank</AlertTitle>
           <AlertDescription>
-            These drafts come from ready-made UX/UI post ideas, not today&apos;s news. Add an Anthropic API key to get
+            These drafts come from ready-made post ideas for your profession, not today&apos;s news. Add an Anthropic API key to get
             fresh drafts written for you each morning from current design news.
           </AlertDescription>
         </Alert>

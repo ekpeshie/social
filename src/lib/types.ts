@@ -1,6 +1,7 @@
 export type PostStatus = "draft" | "approved" | "posted" | "skipped"
 
 export type Profile = {
+  profession: string // id from professions.ts, or "other"
   name: string
   role: string
   audience: string
@@ -14,6 +15,10 @@ export type Profile = {
   githubUsername: string
   githubRepos: string // one owner/repo per line
   figmaFiles: string // one Figma file link per line
+  linkedinUrl: string
+  xHandle: string
+  xFollow: string // X handles to engage with, one per line
+  linkedinFollow: string // LinkedIn profile links to engage with, one per line
 }
 
 export type Idea = {

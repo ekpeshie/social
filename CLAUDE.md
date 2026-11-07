@@ -11,10 +11,14 @@ Use shadcn/ui for all UI unless told otherwise.
 - Sentence case for all UI text. One primary button per view. Icons from `lucide-react`.
 
 ## Layout
+- No sign-up: `/onboarding` (profession, posts per day, optional LinkedIn/X accounts) creates a profile and a `uid` cookie (`src/lib/session.ts`). All data is per user; pages call `requireUserId()`.
+- `src/lib/professions.ts`: profession presets. Designers get the hand-written `ideaBank`; others get `frameworkIdeas()` (both in `src/lib/idea-bank.ts`).
+- `src/lib/work.ts`: recent GitHub (`GITHUB_TOKEN` optional) and Figma (`FIGMA_TOKEN`) activity for "From your work" ideas.
+- `/replies` + `src/lib/social.ts`, `src/lib/replies.ts`: LinkedIn and X don't let apps read feeds for free, so the app links to live searches and drafts replies to pasted posts.
 - `src/lib/generate.ts`: drafting. With `ANTHROPIC_API_KEY`, step 1 searches the web for news, step 2 writes structured drafts (model `claude-opus-5-5`). Without a key it picks from `src/lib/idea-bank.ts`.
-- `src/lib/store.ts`: Upstash Redis when its env vars are set, else `.data/db.json`.
-- `src/app/actions.ts`: server actions for the UI. `src/app/api/cron/generate`: daily Vercel Cron.
-- `src/middleware.ts`: password gate when `APP_PASSWORD` is set.
+- `src/lib/store.ts`: Upstash Redis when its env vars are set, else `.data/db.json`. Keys are `u:<uid>:…`; `users` lists every uid.
+- `src/app/actions.ts`: server actions for the UI. `src/app/api/cron/generate`: daily Vercel Cron, loops over all users within a time budget.
+- `src/middleware.ts`: sends visitors without a `uid` cookie to onboarding; optional site-wide password gate when `APP_PASSWORD` is set.
 
 ## Commands
 `npm run dev`, `npm run build`, `npm run lint`, `npx tsc --noEmit`.

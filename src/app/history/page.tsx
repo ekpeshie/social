@@ -2,12 +2,13 @@ import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { StatusBadge } from "@/components/post-editor"
 import { formatDay } from "@/lib/dates"
+import { requireUserId } from "@/lib/session"
 import { recentBatches } from "@/lib/store"
 
 export const dynamic = "force-dynamic"
 
 export default async function HistoryPage() {
-  const batches = await recentBatches(30)
+  const batches = await recentBatches(await requireUserId(), 30)
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-1">

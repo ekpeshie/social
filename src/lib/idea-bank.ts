@@ -8,6 +8,7 @@ export type BankIdea = {
   whyNow: string
   linkedin: string
   x: string[]
+  subject?: string // the profile topic a framework idea was built from
 }
 
 export const ideaBank: BankIdea[] = [
@@ -307,3 +308,66 @@ You'll get fewer opinions and more insight.
     ],
   },
 ]
+
+// For professions without a hand-written bank: proven post structures filled
+// with the person's topics. The brackets are for their own details.
+type Framework = (topic: string, role: string, audience: string) => BankIdea
+
+// Lowercase the first letter for mid-sentence use, but keep acronyms like "AI" or "UX".
+const lc = (s: string) => (/^[A-Z]{2}/.test(s) ? s : s.charAt(0).toLowerCase() + s.slice(1))
+const tag = (s: string) => "#" + s.replace(/[^A-Za-z0-9 ]/g, "").split(" ").filter(Boolean).slice(0, 3).map((w) => w[0].toUpperCase() + w.slice(1)).join("")
+
+const frameworks: Framework[] = [
+  (t, role) => ({
+    topic: `A mistake I made with ${lc(t)}`,
+    angle: "Share one mistake and what you do differently now.",
+    whyNow: "Lessons from mistakes are some of the most shared posts on both platforms.",
+    linkedin: `Early in my career as a ${lc(role)}, I got ${lc(t)} wrong.\n\n[Describe the mistake in one or two sentences.]\n\nWhat it cost: [time, money, trust, a missed deadline].\n\nWhat I do differently now:\n→ [Change 1]\n→ [Change 2]\n→ [Change 3]\n\nThe lesson: [one sentence someone could act on today].\n\nWhat's a mistake that taught you the most?\n\n${tag(t)}`,
+    x: [`A mistake I made with ${lc(t)}: [the mistake].\n\nWhat I do now: [the change].\n\n[One-line lesson]`],
+  }),
+  (t, _role, audience) => ({
+    topic: `3 steps to get better at ${lc(t)}`,
+    angle: "A short, practical how-to.",
+    whyNow: "Step-by-step posts are easy to save and share.",
+    linkedin: `If you want to get better at ${lc(t)}, start here.\n\nMost advice on this is vague. Here are 3 steps that worked for me:\n\n1. [Step one, with a concrete example]\n2. [Step two, with a concrete example]\n3. [Step three, with a concrete example]\n\nStart with step 1 this week. It takes [time].\n\nWhich of these would help ${lc(audience.split(/[,;.]/)[0])} most?\n\n${tag(t)}`,
+    x: [
+      `3 steps to get better at ${lc(t)}:`,
+      "1. [Step one, with an example]",
+      "2. [Step two, with an example]",
+      "3. [Step three, with an example]\n\nStart with step 1 this week.",
+    ],
+  }),
+  (t) => ({
+    topic: `An unpopular opinion on ${lc(t)}`,
+    angle: "Disagree respectfully with common advice, and back it up.",
+    whyNow: "A clear point of view gets more thoughtful replies than a safe one.",
+    linkedin: `Unpopular opinion: [common advice about ${lc(t)}] is overrated.\n\nHere's why: [your reason, from experience].\n\nWhat I'd do instead: [your alternative].\n\nIt isn't always wrong. It works when [the situation where the common advice does make sense].\n\nDo you agree, or have you seen it work?\n\n${tag(t)}`,
+    x: [`Unpopular opinion: [common advice about ${lc(t)}] is overrated.\n\n[Your reason]. Do [your alternative] instead.`],
+  }),
+  (t) => ({
+    topic: `Before and after: ${lc(t)}`,
+    angle: "Show a concrete change and its result.",
+    whyNow: "Before/after posts make abstract skills visible.",
+    linkedin: `Before: [how you used to approach ${lc(t)}].\nAfter: [how you approach it now].\n\nThe change that made the difference: [one specific thing].\n\nThe result: [what improved; only use numbers you can stand behind].\n\nIf you're still in the "before" stage, try [one small first step].\n\n${tag(t)}`,
+    x: [`${t}, before vs after:\n\nBefore: [old way]\nAfter: [new way]\n\nThe one change: [what made the difference]`],
+  }),
+  (t, role) => ({
+    topic: `What I wish I knew about ${lc(t)}`,
+    angle: "Advice to your younger self or to someone starting out.",
+    whyNow: "Advice for people earlier in their career is widely shared.",
+    linkedin: `What I wish someone had told me about ${lc(t)} when I started as a ${lc(role)}:\n\n→ [Lesson 1]\n→ [Lesson 2]\n→ [Lesson 3]\n\nThe one I'd underline: [the most important one, and why].\n\nWhat would you add?\n\n${tag(t)}`,
+    x: [`What I wish I knew about ${lc(t)} when I started:\n\n→ [Lesson 1]\n→ [Lesson 2]\n→ [Lesson 3]`],
+  }),
+  (t) => ({
+    topic: `My tools and process for ${lc(t)}`,
+    angle: "A behind-the-scenes look at how you actually work.",
+    whyNow: "People like seeing real workflows, not idealized ones.",
+    linkedin: `People ask how I handle ${lc(t)}. Here's my actual process:\n\n1. [First thing you do, and the tool if any]\n2. [Second step]\n3. [Third step]\n\nWhat I skip on purpose: [something people expect you to do but you don't, and why].\n\nHow does your process compare?\n\n${tag(t)}`,
+    x: [`My process for ${lc(t)}:\n\n1. [Step]\n2. [Step]\n3. [Step]\n\nWhat I skip on purpose: [thing]`],
+  }),
+]
+
+/** Ideas for any profession: every framework applied to every topic. */
+export function frameworkIdeas(p: { role: string; audience: string; topics: string[] }): BankIdea[] {
+  return p.topics.flatMap((t) => frameworks.map((f) => ({ ...f(t, p.role, p.audience), subject: t })))
+}

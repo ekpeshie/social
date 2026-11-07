@@ -2,6 +2,7 @@ import type { Profile } from "./types"
 
 export const defaultProfile: Profile = {
   name: "",
+  profession: "ux-ui-designer",
   role: "UX/UI designer",
   audience:
     "Product designers, founders and product managers who want better user experiences; hiring managers looking for designers.",
@@ -22,4 +23,8 @@ export const defaultProfile: Profile = {
   githubUsername: "",
   githubRepos: "",
   figmaFiles: "",
+  linkedinUrl: "",
+  xHandle: "",
+  xFollow: "",
+  linkedinFollow: "",
 }

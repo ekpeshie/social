@@ -1,11 +1,12 @@
 import { ProfileForm } from "@/components/profile-form"
+import { requireUserId } from "@/lib/session"
 import { getProfile } from "@/lib/store"
 import { hasWorkSources } from "@/lib/work"
 
 export const dynamic = "force-dynamic"
 
 export default async function SettingsPage() {
-  const profile = await getProfile()
+  const profile = await getProfile(await requireUserId())
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-1">

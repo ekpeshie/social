@@ -7,13 +7,14 @@ import { ThemeToggle } from "@/components/theme-toggle"
 
 const links = [
   { href: "/", label: "Today" },
+  { href: "/replies", label: "Replies" },
   { href: "/history", label: "History" },
   { href: "/settings", label: "Settings" },
 ]
 
 export function SiteHeader() {
   const pathname = usePathname()
-  if (pathname === "/login") return null
+  if (pathname === "/login" || pathname === "/onboarding") return null
   return (
     <header className="sticky top-0 z-10 border-b bg-background/95 backdrop-blur">
       <div className="mx-auto flex h-14 w-full max-w-3xl items-center gap-6 px-4">

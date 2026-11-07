@@ -3,7 +3,7 @@ import Anthropic from "@anthropic-ai/sdk"
 import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod"
 import { z } from "zod"
 import { todayIn } from "./dates"
-import { ideaBank } from "./idea-bank"
+import { frameworkIdeas, ideaBank } from "./idea-bank"
 import { getProfile, recentBatches, saveBatch } from "./store"
 import type { Batch, Idea, Profile, WorkItem } from "./types"
 import { getRecentWork, templateWorkDraft } from "./work"
@@ -124,10 +124,10 @@ ${work.slice(0, 4).map((w) => `## ${w.source === "github" ? "GitHub repo" : "Fig
   return res.parsed_output.ideas
 }
 
-export async function generateToday(opts: { force?: boolean } = {}): Promise<Batch> {
-  const profile = await getProfile()
+export async function generateToday(uid: string, opts: { force?: boolean } = {}): Promise<Batch> {
+  const profile = await getProfile(uid)
   const date = todayIn(profile.timezone)
-  const recent = await recentBatches(14)
+  const recent = await recentBatches(uid, 14)
   const existing = recent.find((b) => b.date === date)
   if (existing && !opts.force) return existing
 
@@ -143,7 +143,7 @@ export async function generateToday(opts: { force?: boolean } = {}): Promise<Bat
     drafts = await writeDrafts(profile, brief, recentTopics, work)
   } else {
     const fromWork = pickWorkItem(work, recentTopics, opts.force ? (existing ?? null) : null)
-    const bank = pickFromBank(profile.ideasPerDay - (fromWork ? 1 : 0), recentTopics, opts.force ? (existing ?? null) : null)
+    const bank = pickFromBank(profile, profile.ideasPerDay - (fromWork ? 1 : 0), recentTopics, opts.force ? (existing ?? null) : null)
     drafts = fromWork ? [{ ...templateWorkDraft(fromWork), kind: "work" as const, sourceUrl: fromWork.url }, ...bank] : bank
   }
 
@@ -160,17 +160,30 @@ export async function generateToday(opts: { force?: boolean } = {}): Promise<Bat
   }))
 
   const batch: Batch = { date, createdAt: new Date().toISOString(), brief, ideas }
-  await saveBatch(batch)
+  await saveBatch(uid, batch)
   return batch
 }
 
 /** No-key mode: pick ideas from the built-in bank, skipping recent ones. */
-function pickFromBank(count: number, recentTopics: string[], replacing: Batch | null) {
+const DESIGN_PROFESSIONS = ["ux-ui-designer", "product-designer"]
+
+function pickFromBank(p: Profile, count: number, recentTopics: string[], replacing: Batch | null) {
+  const bank = DESIGN_PROFESSIONS.includes(p.profession) ? ideaBank : frameworkIdeas(p)
   const exclude = new Set([...recentTopics, ...(replacing?.ideas.map((i) => i.topic) ?? [])])
-  const fresh = ideaBank.filter((i) => !exclude.has(i.topic))
-  const pool = fresh.length >= count ? fresh : ideaBank
+  const fresh = bank.filter((i) => !exclude.has(i.topic))
+  const pool = fresh.length >= count ? fresh : bank
   const shuffled = [...pool].sort(() => Math.random() - 0.5)
-  return shuffled.slice(0, count).map((i) => ({
+  // Prefer a different subject and post format for each idea on the same day.
+  const angles = new Set<string>()
+  const subjects = new Set<string>()
+  const distinct = shuffled.filter((i) => {
+    if (angles.has(i.angle) || (i.subject && subjects.has(i.subject))) return false
+    angles.add(i.angle)
+    if (i.subject) subjects.add(i.subject)
+    return true
+  })
+  const picked = [...distinct, ...shuffled.filter((i) => !distinct.includes(i))].slice(0, Math.max(0, count))
+  return picked.map((i) => ({
     topic: i.topic,
     kind: "expertise" as const,
     angle: i.angle,
