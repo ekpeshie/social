@@ -5,7 +5,8 @@ import { z } from "zod"
 import { todayIn } from "./dates"
 import { ideaBank } from "./idea-bank"
 import { getProfile, recentBatches, saveBatch } from "./store"
-import type { Batch, Idea, Profile } from "./types"
+import type { Batch, Idea, Profile, WorkItem } from "./types"
+import { getRecentWork, templateWorkDraft } from "./work"
 
 const MODEL = "claude-opus-5-5"
 // If a request is declined by a safety classifier, the API re-runs it on
@@ -76,10 +77,10 @@ const IdeasSchema = z.object({
   ideas: z.array(
     z.object({
       topic: z.string().describe("Short title for the idea, under 8 words"),
-      kind: z.enum(["news", "expertise"]),
+      kind: z.enum(["news", "expertise", "work"]),
       angle: z.string().describe("One sentence: the point of view the post takes"),
       whyNow: z.string().describe("One sentence: why this is worth posting today"),
-      sourceUrl: z.string().nullable().describe("URL of the news story, or null for expertise posts"),
+      sourceUrl: z.string().nullable().describe("URL of the news story or work item, or null for expertise posts"),
       linkedin: z.string().describe("The full LinkedIn post"),
       x: z
         .array(z.string())
@@ -89,8 +90,9 @@ const IdeasSchema = z.object({
 })
 
 /** Step 2: turn the news brief and the profile into ready-to-edit drafts. */
-async function writeDrafts(p: Profile, brief: string, recentTopics: string[]) {
-  const newsCount = Math.ceil(p.ideasPerDay / 2)
+async function writeDrafts(p: Profile, brief: string, recentTopics: string[], work: WorkItem[]) {
+  const workCount = work.length ? 1 : 0
+  const newsCount = Math.ceil((p.ideasPerDay - workCount) / 2)
   const res = await client().beta.messages.parse({
     model: MODEL,
     max_tokens: 16000,
@@ -100,7 +102,7 @@ async function writeDrafts(p: Profile, brief: string, recentTopics: string[]) {
     messages: [
       {
         role: "user",
-        content: `Write ${p.ideasPerDay} post ideas for today: ${newsCount} reacting to a story in the news brief below (kind "news"), the rest drawn from their expertise (kind "expertise", e.g. a lesson, a how-to, a mistake to avoid, a before/after).
+        content: `Write ${p.ideasPerDay} post ideas for today: ${workCount ? `1 about their own recent work below (kind "work": what they built or designed, a decision behind it, or a lesson from it; set sourceUrl to that item's URL), ` : ""}${newsCount} reacting to a story in the news brief below (kind "news"), the rest drawn from their expertise (kind "expertise", e.g. a lesson, a how-to, a mistake to avoid, a before/after).
 
 For each idea write both a LinkedIn post and an X post on the same idea, adapted to each platform:
 - LinkedIn: open with a hook that works in the first two lines, then 120-250 words in short paragraphs. Give one concrete example or step. End with a takeaway or a genuine question. At most 3 hashtags, at the end.
@@ -109,7 +111,10 @@ For each idea write both a LinkedIn post and an X post on the same idea, adapted
 Write as the person, in first person, in their voice. Don't invent personal stories, clients or numbers; where a personal detail would help, write it as a bracketed placeholder like [your project]. Don't repeat these recent topics: ${recentTopics.length ? recentTopics.join("; ") : "none yet"}.
 
 News brief:
-${brief || "(No news found today. Make every idea an expertise post.)"}`,
+${brief || "(No news found today. Make every idea an expertise post.)"}${workCount ? `
+
+Their recent work (commit messages and version notes are terse; turn them into plain language a non-engineer would follow, and don't claim results that aren't stated):
+${work.slice(0, 4).map((w) => `## ${w.source === "github" ? "GitHub repo" : "Figma file"}: ${w.title}\nURL: ${w.url}\n${w.summary}`).join("\n\n")}` : ""}`,
       },
     ],
     ...FALLBACK,
@@ -127,13 +132,19 @@ export async function generateToday(opts: { force?: boolean } = {}): Promise<Bat
   if (existing && !opts.force) return existing
 
   const recentTopics = recent.filter((b) => b.date !== date).flatMap((b) => b.ideas.map((i) => i.topic))
+  // Recent GitHub and Figma activity; failures here never block the day's drafts.
+  const { items: work, errors: workErrors } = await getRecentWork(profile)
+  if (workErrors.length) console.warn("Work sources:", workErrors)
+
   let brief = ""
   let drafts: z.infer<typeof IdeasSchema>["ideas"]
   if (hasApiKey()) {
     brief = await researchNews(profile, date)
-    drafts = await writeDrafts(profile, brief, recentTopics)
+    drafts = await writeDrafts(profile, brief, recentTopics, work)
   } else {
-    drafts = pickFromBank(profile.ideasPerDay, recentTopics, opts.force ? (existing ?? null) : null)
+    const fromWork = pickWorkItem(work, recentTopics, opts.force ? (existing ?? null) : null)
+    const bank = pickFromBank(profile.ideasPerDay - (fromWork ? 1 : 0), recentTopics, opts.force ? (existing ?? null) : null)
+    drafts = fromWork ? [{ ...templateWorkDraft(fromWork), kind: "work" as const, sourceUrl: fromWork.url }, ...bank] : bank
   }
 
   const ideas: Idea[] = drafts.map((d) => ({
@@ -143,6 +154,7 @@ export async function generateToday(opts: { force?: boolean } = {}): Promise<Bat
     angle: d.angle,
     whyNow: d.whyNow,
     sourceUrl: d.sourceUrl,
+    imageUrl: d.kind === "work" ? (work.find((w) => w.url === d.sourceUrl)?.imageUrl ?? null) : null,
     linkedin: { text: d.linkedin, status: "draft" },
     x: { posts: d.x, status: "draft" },
   }))
@@ -167,4 +179,10 @@ function pickFromBank(count: number, recentTopics: string[], replacing: Batch | 
     linkedin: i.linkedin,
     x: i.x,
   }))
+}
+
+/** No-key mode: the most recent work item not already posted about. */
+function pickWorkItem(work: WorkItem[], recentTopics: string[], replacing: Batch | null) {
+  const used = new Set([...recentTopics, ...(replacing?.ideas.map((i) => i.topic) ?? [])])
+  return work.find((w) => !used.has(templateWorkDraft(w).topic)) ?? null
 }

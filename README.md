@@ -23,6 +23,15 @@ ANTHROPIC_API_KEY=sk-ant-...
 
 Then each run searches the web for this week's design news and writes drafts in your voice from the profile on the **Settings** page.
 
+## Posts from your own work
+
+In **Settings → Your work**, add your GitHub username, specific repos, or Figma file links. When there's recent activity (GitHub: 7 days, Figma: 14 days), one idea each day is about that work: what you built or designed and why.
+
+- Public GitHub repos need no token. Add `GITHUB_TOKEN` for private repos.
+- Figma needs `FIGMA_TOKEN` (a free personal access token).
+- Without an Anthropic key these drafts are rough templates built from commit messages and version notes. With a key they're written properly.
+- Only add work you're allowed to share publicly.
+
 ## Deploy to Vercel
 
 1. Import this repo in Vercel.

@@ -4,10 +4,12 @@ import { useTransition } from "react"
 import { toast } from "sonner"
 import { saveProfileAction } from "@/app/actions"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { Badge } from "@/components/ui/badge"
+import { WorkCheck } from "@/components/work-sources"
 import type { Profile } from "@/lib/types"
 
 function Field({ id, label, hint, children }: { id: string; label: string; hint?: string; children: React.ReactNode }) {
@@ -20,10 +22,21 @@ function Field({ id, label, hint, children }: { id: string; label: string; hint?
   )
 }
 
-export function ProfileForm({ profile }: { profile: Profile }) {
+type Props = {
+  profile: Profile
+  tokens: { github: boolean; figma: boolean }
+  hasSources: boolean
+}
+
+function TokenBadge({ set, name }: { set: boolean; name: string }) {
+  return <Badge variant={set ? "secondary" : "outline"}>{set ? `${name} connected` : `No ${name}`}</Badge>
+}
+
+export function ProfileForm({ profile, tokens, hasSources }: Props) {
   const [pending, startTransition] = useTransition()
   return (
     <form
+      className="flex flex-col gap-6"
       action={(fd) =>
         startTransition(async () => {
           const { error } = await saveProfileAction(fd)
@@ -73,12 +86,58 @@ export function ProfileForm({ profile }: { profile: Profile }) {
             </Field>
           </div>
         </CardContent>
-        <CardFooter className="border-t">
-          <Button type="submit" disabled={pending}>
-            {pending ? "Saving…" : "Save settings"}
-          </Button>
-        </CardFooter>
       </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Your work</CardTitle>
+          <CardDescription>
+            When you&apos;ve pushed code or edited a design recently, one idea each day is about that work. Only add
+            work you&apos;re allowed to share publicly; client files under NDA don&apos;t belong here.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-6">
+          <div className="grid gap-6 sm:grid-cols-2">
+            <Field
+              id="githubUsername"
+              label="GitHub username"
+              hint="Reads your public repos pushed in the last 7 days."
+            >
+              <Input id="githubUsername" name="githubUsername" defaultValue={profile.githubUsername} placeholder="ekpeshie" />
+            </Field>
+            <div className="flex flex-col gap-2">
+              <Label>Access</Label>
+              <div className="flex flex-wrap gap-2">
+                <TokenBadge set={tokens.github} name="GITHUB_TOKEN" />
+                <TokenBadge set={tokens.figma} name="FIGMA_TOKEN" />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Public GitHub repos need no token. Private repos need GITHUB_TOKEN; Figma always needs FIGMA_TOKEN.
+              </p>
+            </div>
+          </div>
+          <Field id="githubRepos" label="Specific GitHub repos" hint="Optional. One per line, as owner/repo or a link.">
+            <Textarea id="githubRepos" name="githubRepos" defaultValue={profile.githubRepos} placeholder="ekpeshie/social" />
+          </Field>
+          <Field
+            id="figmaFiles"
+            label="Figma files"
+            hint="One link per line. Reads the file name, pages, named versions and thumbnail of files edited in the last 14 days."
+          >
+            <Textarea
+              id="figmaFiles"
+              name="figmaFiles"
+              defaultValue={profile.figmaFiles}
+              placeholder="https://www.figma.com/design/AbC123/Portfolio-redesign"
+            />
+          </Field>
+          <WorkCheck disabled={!hasSources} />
+        </CardContent>
+      </Card>
+
+      <Button type="submit" className="self-start" disabled={pending}>
+        {pending ? "Saving…" : "Save settings"}
+      </Button>
     </form>
   )
 }

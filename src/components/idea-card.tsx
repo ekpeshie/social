@@ -9,7 +9,7 @@ export function IdeaCard({ date, idea }: { date: string; idea: Idea }) {
     <Card>
       <CardHeader>
         <div className="flex flex-wrap items-center gap-2">
-          <Badge variant="outline">{idea.kind === "news" ? "In the news" : "From your expertise"}</Badge>
+          <Badge variant="outline">{idea.kind === "news" ? "In the news" : idea.kind === "work" ? "From your work" : "From your expertise"}</Badge>
         </div>
         <CardTitle className="text-lg">{idea.topic}</CardTitle>
         <CardDescription className="text-pretty">
@@ -23,13 +23,22 @@ export function IdeaCard({ date, idea }: { date: string; idea: Idea }) {
                 rel="noreferrer"
                 className="font-medium text-foreground underline underline-offset-4"
               >
-                Source
+                {idea.kind === "work" ? "View the work" : "Source"}
               </a>
             </>
           )}
         </CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="flex flex-col gap-4">
+        {idea.imageUrl && (
+          // Figma thumbnail links expire after a while; this is a preview, not the image to post.
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={idea.imageUrl}
+            alt={`Preview of ${idea.topic}`}
+            className="max-h-64 w-full rounded-lg border bg-muted object-contain"
+          />
+        )}
         <Tabs defaultValue="linkedin">
           <TabsList>
             <TabsTrigger value="linkedin">

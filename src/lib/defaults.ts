@@ -19,4 +19,7 @@ export const defaultProfile: Profile = {
     "Product design and UX news: Figma and design-tool releases, notable redesigns, accessibility rules and lawsuits, AI design tools, design hiring trends.",
   ideasPerDay: 3,
   timezone: "UTC",
+  githubUsername: "",
+  githubRepos: "",
+  figmaFiles: "",
 }

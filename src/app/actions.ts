@@ -6,7 +6,8 @@ import { revalidatePath } from "next/cache"
 import { SESSION_COOKIE, sessionToken } from "@/lib/auth"
 import { generateToday } from "@/lib/generate"
 import { getBatch, getProfile, saveBatch, saveProfile } from "@/lib/store"
-import type { PostStatus, Profile } from "@/lib/types"
+import type { PostStatus, Profile, WorkItem } from "@/lib/types"
+import { getRecentWork } from "@/lib/work"
 
 export async function generateAction(force: boolean): Promise<{ error?: string }> {
   try {
@@ -63,6 +64,9 @@ export async function saveProfileAction(formData: FormData): Promise<{ error?: s
     newsFocus: str("newsFocus"),
     ideasPerDay,
     timezone,
+    githubUsername: str("githubUsername").replace(/^@/, ""),
+    githubRepos: str("githubRepos"),
+    figmaFiles: str("figmaFiles"),
   }
   await saveProfile(profile)
   revalidatePath("/", "layout")
@@ -82,4 +86,9 @@ export async function loginAction(_prev: { error?: string }, formData: FormData)
     path: "/",
   })
   redirect("/")
+}
+
+/** Reads the saved GitHub and Figma sources and reports what it finds. */
+export async function checkWorkAction(): Promise<{ items: WorkItem[]; errors: string[] }> {
+  return getRecentWork(await getProfile())
 }
